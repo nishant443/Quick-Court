@@ -11,15 +11,33 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// const allowedOrigins = [
+//   process.env.FRONTEND_URL,
+//   process.env.LOCAL_VITE_URL,
+//   process.env.LOCAL_REACT_URL,
+// ].filter(Boolean);
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.LOCAL_VITE_URL,
-  process.env.LOCAL_REACT_URL,
-].filter(Boolean);
+  "https://quick-court-mx6r.onrender.com",  // your deployed frontend
+  "http://localhost:5173",                  // local dev
+];
 
+// app.use(
+//   cors({
+//     origin: allowedOrigins,
+//     credentials: true,
+//   })
+// );
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);     // allow mobile / curl
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        console.log("❌ Blocked by CORS:", origin);
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
