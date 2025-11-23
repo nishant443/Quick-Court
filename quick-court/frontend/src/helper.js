@@ -1,2 +1,1 @@
-// src/helper.js
-export const base = "http://localhost:8000/api";
+export const base = import.meta.env.VITE_BACKEND_URL;
