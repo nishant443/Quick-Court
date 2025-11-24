@@ -1,3 +1,4 @@
+import { base } from "../helper";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -33,14 +34,12 @@ const EnhancedHome = () => {
   const [venues, setVenues] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   // Dynamic venue fetching
   useEffect(() => {
     const fetchVenues = async () => {
       setLoading(true);
       setError("");
       try {
-        const base = "http://localhost:8000/api"; // Replace with your real base URL
         const { data } = await axios.get(`${base}/venues/`, {
           params: { status: "approved" },
         });
