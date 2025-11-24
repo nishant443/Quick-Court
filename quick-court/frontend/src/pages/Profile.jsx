@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { base } from "../helper";
 import Breadcrumb from "../components/Breadcrumb";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const [formData, setFormData] = useState({
@@ -58,6 +59,8 @@ const Profile = () => {
   const [adminBusy, setAdminBusy] = useState(false);
   const [adminMsg, setAdminMsg] = useState("");
 
+  const navigate = useNavigate();
+
   const API_BASE = base;
 
   // Helper function to check if booking is in the future
@@ -65,21 +68,21 @@ const Profile = () => {
     try {
       const bookingDate = new Date(booking.date);
       const currentDate = new Date();
-      
+
       // If booking is on a future date, it's definitely cancellable
       if (bookingDate.toDateString() !== currentDate.toDateString()) {
         return bookingDate > currentDate;
       }
-      
+
       // If booking is today, check the time
       if (booking.timeSlot?.start) {
         const [startHour, startMinute] = booking.timeSlot.start.split(':').map(Number);
         const bookingDateTime = new Date(bookingDate);
         bookingDateTime.setHours(startHour, startMinute, 0, 0);
-        
+
         return bookingDateTime > currentDate;
       }
-      
+
       // If no time slot info, assume it's not cancellable for today
       return false;
     } catch (error) {
@@ -93,21 +96,21 @@ const Profile = () => {
     try {
       const bookingDate = new Date(booking.date);
       const currentDate = new Date();
-      
+
       // Only check if it's today
       if (bookingDate.toDateString() === currentDate.toDateString() && booking.timeSlot?.start && booking.timeSlot?.end) {
         const [startHour, startMinute] = booking.timeSlot.start.split(':').map(Number);
         const [endHour, endMinute] = booking.timeSlot.end.split(':').map(Number);
-        
+
         const bookingStartTime = new Date(bookingDate);
         bookingStartTime.setHours(startHour, startMinute, 0, 0);
-        
+
         const bookingEndTime = new Date(bookingDate);
         bookingEndTime.setHours(endHour, endMinute, 0, 0);
-        
+
         return currentDate >= bookingStartTime && currentDate <= bookingEndTime;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error checking if booking is live:', error);
@@ -120,21 +123,21 @@ const Profile = () => {
     try {
       const bookingDate = new Date(booking.date);
       const currentDate = new Date();
-      
+
       // If booking is on a future date, it's editable
       if (bookingDate.toDateString() !== currentDate.toDateString()) {
         return bookingDate > currentDate;
       }
-      
+
       // If booking is today, check if it hasn't started yet
       if (booking.timeSlot?.start) {
         const [startHour, startMinute] = booking.timeSlot.start.split(':').map(Number);
         const bookingDateTime = new Date(bookingDate);
         bookingDateTime.setHours(startHour, startMinute, 0, 0);
-        
+
         return bookingDateTime > currentDate;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error checking booking editability:', error);
@@ -147,7 +150,7 @@ const Profile = () => {
     try {
       const bookingDate = new Date(booking.date);
       const currentDate = new Date();
-      
+
       if (bookingDate.toDateString() === currentDate.toDateString()) {
         if (isBookingLive(booking)) {
           return "Booking is currently live";
@@ -180,7 +183,7 @@ const Profile = () => {
           const js = await res.json();
           setAdminStats(js?.data || null);
         }
-      } catch {}
+      } catch { }
     };
     fetchStats();
   }, [formData.role]);
@@ -537,7 +540,7 @@ const Profile = () => {
                           selectedFile
                             ? URL.createObjectURL(selectedFile)
                             : formData.profilePhoto ||
-                              `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`
+                            `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`
                         }
                         alt="Profile"
                         className="w-full h-full rounded-full object-cover bg-white"
@@ -588,11 +591,10 @@ const Profile = () => {
                       setShowEdit(false);
                       fetchBookings();
                     }}
-                    className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                      activeTab === "bookings" && !showEdit
+                    className={`w-full py-3 px-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${activeTab === "bookings" && !showEdit
                         ? "bg-white/20 text-white shadow-lg"
                         : "bg-white/5 text-gray-300 hover:bg-white/10"
-                    }`}
+                      }`}
                   >
                     <BookOpen className="w-4 h-4" />
                     View Bookings
@@ -623,9 +625,7 @@ const Profile = () => {
                           Admin Tools
                         </div>
                         <button
-                          onClick={() =>
-                            (window.location.href = "/admin/dashboard")
-                          }
+                          onClick={() => navigate("/admin/dashboard")}
                           className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs hover:from-purple-600 hover:to-pink-600"
                         >
                           Open Dashboard
@@ -804,11 +804,10 @@ const Profile = () => {
                         setActiveTab("bookings");
                         setShowEdit(false);
                       }}
-                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
-                        activeTab === "bookings" && !showEdit
+                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${activeTab === "bookings" && !showEdit
                           ? "text-white bg-white/10"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
-                      }`}
+                        }`}
                     >
                       All Bookings ({nonCancelled.length})
                       {activeTab === "bookings" && !showEdit && (
@@ -820,11 +819,10 @@ const Profile = () => {
                         setActiveTab("cancelled");
                         setShowEdit(false);
                       }}
-                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
-                        activeTab === "cancelled" && !showEdit
+                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${activeTab === "cancelled" && !showEdit
                           ? "text-white bg-white/10"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
-                      }`}
+                        }`}
                     >
                       Cancelled ({cancelled.length})
                       {activeTab === "cancelled" && !showEdit && (
@@ -833,11 +831,10 @@ const Profile = () => {
                     </button>
                     <button
                       onClick={() => setShowEdit(true)}
-                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${
-                        showEdit
+                      className={`flex-1 px-6 py-4 text-center font-medium transition-all duration-200 relative ${showEdit
                           ? "text-white bg-white/10"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
-                      }`}
+                        }`}
                     >
                       Edit Profile
                       {showEdit && (
@@ -889,22 +886,19 @@ const Profile = () => {
                           const isLive = isBookingLive(booking);
                           const isEditable = isBookingEditable(booking);
                           const canCancel = booking.status === "confirmed" && isFutureBooking;
-                          
+
                           return (
                             <div
                               key={booking._id}
-                              className={`bg-white/5 rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-200 hover:shadow-lg ${
-                                isLive ? 'ring-2 ring-green-500/50 bg-green-500/5' : ''
-                              }`}
+                              className={`bg-white/5 rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-200 hover:shadow-lg ${isLive ? 'ring-2 ring-green-500/50 bg-green-500/5' : ''
+                                }`}
                             >
                               <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                  <div className={`rounded-lg p-2 ${
-                                    isLive ? 'bg-green-500/20' : 'bg-purple-500/20'
-                                  }`}>
-                                    <MapPin className={`w-5 h-5 ${
-                                      isLive ? 'text-green-400' : 'text-purple-400'
-                                    }`} />
+                                  <div className={`rounded-lg p-2 ${isLive ? 'bg-green-500/20' : 'bg-purple-500/20'
+                                    }`}>
+                                    <MapPin className={`w-5 h-5 ${isLive ? 'text-green-400' : 'text-purple-400'
+                                      }`} />
                                   </div>
                                   <div>
                                     <h3 className="font-semibold text-white text-lg">
@@ -939,17 +933,15 @@ const Profile = () => {
                                 <>
                                   <div className="flex items-center gap-6 text-gray-300">
                                     <div className="flex items-center gap-2">
-                                      <Calendar className={`w-4 h-4 ${
-                                        isLive ? 'text-green-400' : 'text-purple-400'
-                                      }`} />
+                                      <Calendar className={`w-4 h-4 ${isLive ? 'text-green-400' : 'text-purple-400'
+                                        }`} />
                                       <span className="text-sm">
                                         {formatDate(booking.date)}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <Clock className={`w-4 h-4 ${
-                                        isLive ? 'text-green-400' : 'text-purple-400'
-                                      }`} />
+                                      <Clock className={`w-4 h-4 ${isLive ? 'text-green-400' : 'text-purple-400'
+                                        }`} />
                                       <span className="text-sm">
                                         {booking.timeSlot?.start} -{" "}
                                         {booking.timeSlot?.end}
@@ -972,7 +964,7 @@ const Profile = () => {
                                         </span>
                                       </div>
                                     )}
-                                    
+
                                     {canCancel ? (
                                       <button
                                         onClick={() =>
@@ -1140,7 +1132,7 @@ const Profile = () => {
                                   selectedFile
                                     ? URL.createObjectURL(selectedFile)
                                     : formData.profilePhoto ||
-                                      `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`
+                                    `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face`
                                 }
                                 alt="Profile Preview"
                                 className="w-full h-full rounded-full object-cover bg-white"
@@ -1263,11 +1255,10 @@ const Profile = () => {
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className={`flex-1 py-3 px-6 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
-                              saving
+                            className={`flex-1 py-3 px-6 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 ${saving
                                 ? "bg-purple-500/60 text-white cursor-not-allowed"
                                 : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg hover:shadow-purple-500/25"
-                            }`}
+                              }`}
                           >
                             {saving ? (
                               <>
