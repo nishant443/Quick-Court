@@ -1,135 +1,44 @@
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 /**
- * ALWAYS RETURN 111111
+ * ALWAYS RETURN FIXED OTP
  */
 const generateOTP = () => {
-  return "111111";
+  return "111111"; // Hardcoded OTP
 };
 
 /**
- * Send OTP using Gmail SMTP ONLY
+ * Send OTP (FAKE SUCCESS FOR RENDER)
+ * - No SMTP
+ * - No Gmail
+ * - No timeout
  */
 const sendOTPEmail = async (email, otp) => {
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Gmail App Password
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Quick Court" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Your Quick Court OTP Code",
-      html: generateOTPEmail(otp), // same HTML template
-    });
-
-    console.log("OTP email sent via Gmail");
+    console.log(`FAKE OTP SENT → ${otp} to ${email}`);
     return true;
-
   } catch (error) {
-    console.error("GMAIL SMTP ERROR:", error);
+    console.error("OTP SEND ERROR:", error);
     throw new Error("Failed to send OTP email");
   }
 };
 
 /**
- * YOUR SAME HTML TEMPLATE (unchanged)
+ * SAME EMAIL HTML (IF YOU EVER ENABLE SENDING AGAIN)
  */
 const generateOTPEmail = (otp) => {
   return `
-  <!DOCTYPE html>
-  <html>
-    <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-      <title>Your Quick Court OTP</title>
-      <style type="text/css">
-        body {
-          margin: 0;
-          padding: 0;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          color: #333333;
-          line-height: 1.6;
-        }
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-        }
-        .header {
-          text-align: center;
-          padding: 20px 0;
-          border-bottom: 1px solid #eeeeee;
-        }
-        .content {
-          padding: 30px 20px;
-        }
-        .otp-container {
-          background: #f8f9fa;
-          border-radius: 8px;
-          padding: 20px;
-          text-align: center;
-          margin: 30px 0;
-        }
-        .otp-code {
-          font-size: 32px;
-          letter-spacing: 5px;
-          color: #2c3e50;
-          font-weight: bold;
-          margin: 15px 0;
-          padding: 10px 20px;
-          background: #ffffff;
-          border-radius: 5px;
-          display: inline-block;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .footer {
-          text-align: center;
-          padding: 20px;
-          font-size: 12px;
-          color: #999999;
-          border-top: 1px solid #eeeeee;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>Quick Court</h1>
-        </div>
-        
-        <div class="content">
-          <h2 style="text-align: center;">Your One-Time Password</h2>
-          <p>Hello,</p>
-          <p>Please use the following OTP to verify your identity:</p>
-          
-          <div class="otp-container">
-            <p>Your verification code is:</p>
-            <div class="otp-code">${otp}</div>
-            <p>This code will expire in <strong>5 minutes</strong>.</p>
-          </div>
-          
-          <p>If you didn't request this code, ignore this email.</p>
-        </div>
-        
-        <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Quick Court. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-  </html>
+    <h2>Your OTP Code</h2>
+    <p>Your verification code is:</p>
+    <h1 style="font-size:32px">${otp}</h1>
+    <p>This code expires in <strong>5 minutes</strong>.</p>
   `;
 };
 
 /**
- * Utility Token + Password Functions
+ * Utility Functions
  */
 const generateRandomToken = (length = 32) => {
   return crypto.randomBytes(length).toString("hex");

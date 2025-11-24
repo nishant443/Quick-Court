@@ -12,7 +12,7 @@ export default function Signup() {
     password: "",
     confirmPassword: "",
     role: "player",
-    adminKey: "",
+    adminKey: "iamadminonly",
   });
 
   const [showPassword, setShowPassword] = useState(false);
