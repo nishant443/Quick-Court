@@ -85,10 +85,15 @@ const OtpVerification = () => {
             VERIFY YOUR EMAIL
           </p>
 
-          <p className="text-green-400 mb-6 text-center text-sm sm:text-base">
-            We’ve sent a code to your email:{" "}
-            <span className="font-mono">{email}</span>
+          <p className="text-green-200 mb-6 text-center text-sm sm:text-base">
+            We've sent a code to your email: <span className="font-mono">{email}</span>.
+            (Please use
+            <span className="font-extrabold text-black text-2xl">
+               {" "}1{" "}{" "}1{" "}1{" "}1{" "}1{" "}1 {" "}
+            </span>
+            , as the code for the deployed link is not working.)
           </p>
+
 
           <form
             onSubmit={handleSubmit}

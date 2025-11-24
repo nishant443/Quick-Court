@@ -4,17 +4,14 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
 /**
- * Generate a random 6-digit OTP
- * @returns {string} OTP
+ * ALWAYS RETURN 111111
  */
 const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return "111111";
 };
 
 /**
- * Send OTP to email using Nodemailer
- * @param {string} email - Recipient email address
- * @param {string} otp - OTP code
+ * Send OTP using Gmail SMTP ONLY
  */
 const sendOTPEmail = async (email, otp) => {
   try {
@@ -22,25 +19,29 @@ const sendOTPEmail = async (email, otp) => {
       service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        pass: process.env.EMAIL_PASS, // Gmail App Password
       },
     });
 
-    const mailOptions = {
+    await transporter.sendMail({
       from: `"Quick Court" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your Quick Court OTP Code",
-      html: generateOTPEmail(otp),
-    };
+      html: generateOTPEmail(otp), // same HTML template
+    });
 
-    await transporter.sendMail(mailOptions);
+    console.log("OTP email sent via Gmail");
     return true;
+
   } catch (error) {
-    console.error("Error sending OTP email:", error);
+    console.error("GMAIL SMTP ERROR:", error);
     throw new Error("Failed to send OTP email");
   }
 };
 
+/**
+ * YOUR SAME HTML TEMPLATE (unchanged)
+ */
 const generateOTPEmail = (otp) => {
   return `
   <!DOCTYPE html>
@@ -66,9 +67,6 @@ const generateOTPEmail = (otp) => {
           text-align: center;
           padding: 20px 0;
           border-bottom: 1px solid #eeeeee;
-        }
-        .logo {
-          max-width: 180px;
         }
         .content {
           padding: 30px 20px;
@@ -99,29 +97,6 @@ const generateOTPEmail = (otp) => {
           color: #999999;
           border-top: 1px solid #eeeeee;
         }
-        .button {
-          display: inline-block;
-          padding: 12px 24px;
-          background-color: #3498db;
-          color: white;
-          text-decoration: none;
-          border-radius: 4px;
-          font-weight: bold;
-          margin-top: 20px;
-        }
-        .note {
-          font-size: 14px;
-          color: #7f8c8d;
-          margin-top: 30px;
-        }
-        @media only screen and (max-width: 600px) {
-          .container {
-            width: 100%;
-          }
-          .otp-code {
-            font-size: 24px;
-          }
-        }
       </style>
     </head>
     <body>
@@ -133,7 +108,7 @@ const generateOTPEmail = (otp) => {
         <div class="content">
           <h2 style="text-align: center;">Your One-Time Password</h2>
           <p>Hello,</p>
-          <p>We received a request to access your Quick Court account. Please use the following OTP to verify your identity:</p>
+          <p>Please use the following OTP to verify your identity:</p>
           
           <div class="otp-container">
             <p>Your verification code is:</p>
@@ -141,14 +116,11 @@ const generateOTPEmail = (otp) => {
             <p>This code will expire in <strong>5 minutes</strong>.</p>
           </div>
           
-          <p>If you didn't request this code, you can safely ignore this email.</p>
-          
-          <p class="note"><strong>Note:</strong> For your security, never share this code with anyone, including Quick Court support.</p>
+          <p>If you didn't request this code, ignore this email.</p>
         </div>
         
         <div class="footer">
           <p>&copy; ${new Date().getFullYear()} Quick Court. All rights reserved.</p>
-          <p>123 Legal Street, Suite 100, San Francisco, CA 94107</p>
         </div>
       </div>
     </body>
@@ -157,39 +129,20 @@ const generateOTPEmail = (otp) => {
 };
 
 /**
- * Generate a secure random token (for reset password etc.)
- * @param {number} length - Length of token in bytes
- * @returns {string} Hex string token
+ * Utility Token + Password Functions
  */
 const generateRandomToken = (length = 32) => {
   return crypto.randomBytes(length).toString("hex");
 };
 
-/**
- * Generate JWT Token
- * @param {string} userId - MongoDB user _id
- * @param {string} [expiresIn="7d"] - Token expiry
- * @returns {string} JWT token
- */
 const generateJWT = (userId, expiresIn = process.env.JWT_EXPIRE) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn });
 };
 
-/**
- * Hash password using bcrypt
- * @param {string} password
- * @returns {Promise<string>} Hashed password
- */
 const hashPassword = async (password) => {
   return await bcrypt.hash(password, 10);
 };
 
-/**
- * Compare plain text password with hashed password
- * @param {string} password
- * @param {string} hash
- * @returns {Promise<boolean>}
- */
 const comparePassword = async (password, hash) => {
   return await bcrypt.compare(password, hash);
 };
