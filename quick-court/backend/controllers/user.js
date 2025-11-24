@@ -207,10 +207,10 @@ exports.loginUser = async (req, res) => {
     const token = generateJWT(user._id);
 
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      // httpOnly: true,
+      // secure: process.env.NODE_ENV === "production",
+      // sameSite: "strict",
+      // maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     // Return sanitized user object without password
@@ -231,10 +231,10 @@ exports.loginUser = async (req, res) => {
 exports.logoutUser = async (req, res) => {
   try {
     res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
+      // httpOnly: true,
+      // secure: process.env.NODE_ENV === "production",
+      // sameSite: "strict",
+      // path: "/",
     });
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (err) {
