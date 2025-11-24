@@ -1,15 +1,57 @@
 const User = require("../models/user");
+const crypto = require("crypto");
+require("dotenv").config();
+
+const {
+  generateOTP,
+  sendOTPEmail,
+  generateRandomToken,
+  generateJWT,
+  hashPassword,
+  comparePassword,
+} = require("../utils/helper");
+
+/*
+    -------------- COOKIE CONFIGURATION FOR RENDER --------------
+*/
+const isProduction = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,     // TRUE on Render (HTTPS)
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+};
+
+const clearCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+};
+
+/*
+    -------------- OTP STORE --------------
+*/
+const otpStore = {}; // Temporary in-memory OTP store
+
+/*
+    -------------- ADMIN CONTROLLERS --------------
+*/
+
 // Admin: toggle ban/unban user
 exports.toggleBanUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const user = await User.findById(userId);
+
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
+
     user.isBanned = !user.isBanned;
     await user.save();
+
     res.status(200).json({ success: true, data: user });
   } catch (error) {
     console.error("toggleBanUser Error:", error);
@@ -17,11 +59,12 @@ exports.toggleBanUser = async (req, res) => {
   }
 };
 
-// Admin: basic platform stats
+// Admin stats
 exports.getAdminStats = async (req, res) => {
   try {
     const Booking = require("../models/booking");
     const Venue = require("../models/venue");
+
     const totalUsers = await User.countDocuments();
     const totalBanned = await User.countDocuments({ isBanned: true });
     const totalVenues = await Venue.countDocuments();
@@ -29,7 +72,7 @@ exports.getAdminStats = async (req, res) => {
     const pendingVenues = await Venue.countDocuments({ status: "pending" });
     const totalBookings = await Booking.countDocuments();
 
-    // recent 7 days bookings trend (count per day)
+    // recent 7 days trend
     const since = new Date();
     since.setDate(since.getDate() - 6);
     const trend = await Booking.aggregate([
@@ -47,11 +90,7 @@ exports.getAdminStats = async (req, res) => {
       success: true,
       data: {
         users: { total: totalUsers, banned: totalBanned },
-        venues: {
-          total: totalVenues,
-          approved: approvedVenues,
-          pending: pendingVenues,
-        },
+        venues: { total: totalVenues, approved: approvedVenues, pending: pendingVenues },
         bookings: { total: totalBookings, trend },
       },
     });
@@ -60,19 +99,11 @@ exports.getAdminStats = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-const {
-  generateOTP,
-  sendOTPEmail,
-  generateRandomToken,
-  generateJWT,
-  hashPassword,
-  comparePassword,
-} = require("../utils/helper");
-require("dotenv").config();
 
-const otpStore = {}; // Temporary in-memory OTP store
+/*
+    -------------- AUTH: SEND OTP --------------
+*/
 
-// Send OTP for registration
 exports.sendRegistrationOTP = async (req, res) => {
   try {
     const { name, email, password, phone, role, adminKey } = req.body;
@@ -85,35 +116,36 @@ exports.sendRegistrationOTP = async (req, res) => {
     }
 
     if (!["player", "owner", "admin"].includes(role)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid role selected" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role selected",
+      });
     }
 
-    // If admin role, verify admin key
     if (role === "admin") {
-      if (!adminKey) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Admin key is required" });
-      }
-      if (adminKey !== process.env.ADMIN_SECRET_KEY) {
-        return res
-          .status(403)
-          .json({ success: false, message: "Invalid admin key" });
-      }
+      if (!adminKey)
+        return res.status(400).json({
+          success: false,
+          message: "Admin key is required",
+        });
+
+      if (adminKey !== process.env.ADMIN_SECRET_KEY)
+        return res.status(403).json({
+          success: false,
+          message: "Invalid admin key",
+        });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email already registered" });
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
     }
 
     const otp = generateOTP();
 
-    // Store OTP temporarily in memory
     otpStore[email] = {
       otp,
       name,
@@ -128,7 +160,7 @@ exports.sendRegistrationOTP = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "OTP sent to your email for verification",
+      message: "OTP sent to your email",
     });
   } catch (error) {
     console.error("sendRegistrationOTP Error:", error);
@@ -136,31 +168,38 @@ exports.sendRegistrationOTP = async (req, res) => {
   }
 };
 
-// Verify OTP and activate account
+/*
+    -------------- VERIFY OTP --------------
+*/
+
 exports.verifyRegistrationOTP = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
     const userData = otpStore[email];
-    if (!userData) {
-      return res
-        .status(404)
-        .json({ success: false, message: "OTP not found or expired" });
-    }
+    if (!userData)
+      return res.status(404).json({
+        success: false,
+        message: "OTP not found or expired",
+      });
 
-    if (userData.otp !== otp) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
-    }
+    if (userData.otp !== otp)
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
 
     if (userData.otpExpiry < Date.now()) {
       delete otpStore[email];
-      return res.status(400).json({ success: false, message: "OTP expired" });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
     }
 
-    // OTP is valid, create user in DB
     const { name, email: userEmail, password, phone, role } = userData;
-    const hashedPassword = await hashPassword(password);
 
+    const hashedPassword = await hashPassword(password);
     const newUser = await User.create({
       name,
       email: userEmail,
@@ -169,11 +208,11 @@ exports.verifyRegistrationOTP = async (req, res) => {
       role,
     });
 
-    delete otpStore[email]; // Clean up after verification
+    delete otpStore[email];
 
     res.status(200).json({
       success: true,
-      message: "Account verified and created successfully",
+      message: "Account created successfully",
       user: newUser,
     });
   } catch (error) {
@@ -182,41 +221,37 @@ exports.verifyRegistrationOTP = async (req, res) => {
   }
 };
 
-// Login
+/*
+    -------------- LOGIN --------------
+*/
+
 exports.loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email }).select("+password");
+
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
     if (user.isBanned)
-      return res
-        .status(403)
-        .json({ success: false, message: "Account banned" });
+      return res.status(403).json({ success: false, message: "Account banned" });
 
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid credentials" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
 
     const token = generateJWT(user._id);
 
-    res.cookie("token", token, {
-      // httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: "strict",
-      // maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // send cookie
+    res.cookie("token", token, cookieOptions);
 
-    // Return sanitized user object without password
     const safeUser = await User.findById(user._id).select("-password");
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Logged in successfully",
       user: safeUser,
@@ -227,30 +262,34 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// Logout
+/*
+    -------------- LOGOUT --------------
+*/
+
 exports.logoutUser = async (req, res) => {
   try {
-    res.clearCookie("token", {
-      // httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
-      // sameSite: "strict",
-      // path: "/",
+    res.clearCookie("token", clearCookieOptions);
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
     });
-    res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Forgot Password
+/*
+    -------------- FORGOT PASSWORD --------------
+*/
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
+
     const user = await User.findOne({ email });
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
     const resetToken = generateRandomToken(20);
     const hashedToken = crypto
@@ -262,11 +301,10 @@ exports.forgotPassword = async (req, res) => {
     user.resetTokenExpiry = Date.now() + 10 * 60 * 1000; // 10 min
     await user.save();
 
-    // Email sending can be added here
     res.status(200).json({
       success: true,
       message: "Reset token generated",
-      resetToken, // In real app, send via email
+      resetToken,
     });
   } catch (error) {
     console.error("forgotPassword Error:", error);
@@ -274,9 +312,10 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// CRUD
+/*
+    -------------- CRUD --------------
+*/
 
-// Get all users
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await User.find();
@@ -287,14 +326,12 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get user by ID
 exports.getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
+
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -303,7 +340,6 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-// Create user (Admin only)
 exports.createUser = async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
@@ -325,16 +361,14 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// Update user
 exports.updateUser = async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.userId, req.body, {
       new: true,
     });
+
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -343,14 +377,12 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// Delete user
 exports.deleteUser = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.userId);
+
     if (!user)
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
 
     res.status(200).json({ success: true, message: "User deleted" });
   } catch (error) {
@@ -359,53 +391,52 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+/*
+    -------------- UPDATE PROFILE --------------
+*/
+
 exports.updateMyProfile = async (req, res) => {
   try {
-    // Only allow safe fields to be changed directly
     const { name, phone, password, oldPassword } = req.body;
     const updates = {};
 
-    if (typeof name !== "undefined") updates.name = name;
-    if (typeof phone !== "undefined") updates.phone = phone;
+    if (name !== undefined) updates.name = name;
+    if (phone !== undefined) updates.phone = phone;
 
-    // Handle password change with old password verification
-    if (typeof password !== "undefined" && password !== "") {
-      // Fetch current user with password to verify
+    if (password !== undefined && password !== "") {
       const currentUser = await User.findById(req.user._id).select("+password");
-      if (!currentUser) {
-        return res.status(404).json({ error: "User not found" });
-      }
 
-      if (!oldPassword) {
-        return res
-          .status(400)
-          .json({ error: "Old password is required to change password" });
-      }
+      if (!currentUser)
+        return res.status(404).json({ error: "User not found" });
+
+      if (!oldPassword)
+        return res.status(400).json({
+          error: "Old password is required to change password",
+        });
 
       const isOldValid = await comparePassword(
         oldPassword,
         currentUser.password
       );
-      if (!isOldValid) {
-        return res.status(400).json({ error: "Old password is incorrect" });
-      }
+
+      if (!isOldValid)
+        return res.status(400).json({
+          error: "Old password is incorrect",
+        });
 
       updates.password = await hashPassword(password);
     }
 
-    // Handle profile picture upload (store at profilePhoto for consistency)
-    if (req.file?.path) {
-      updates.profilePhoto = req.file.path; // Cloudinary URL
-    }
+    // Profile image from Cloudinary
+    if (req.file?.path) updates.profilePhoto = req.file.path;
 
     const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
       new: true,
       runValidators: true,
     }).select("-password");
 
-    if (!updatedUser) {
+    if (!updatedUser)
       return res.status(404).json({ error: "User not found" });
-    }
 
     res.json({ user: updatedUser, success: true });
   } catch (err) {
@@ -413,15 +444,20 @@ exports.updateMyProfile = async (req, res) => {
   }
 };
 
-// Get currently authenticated user
+/*
+    -------------- GET ME --------------
+*/
+
 exports.getMe = async (req, res) => {
   try {
     const currentUser = await User.findById(req.user._id).select("-password");
-    if (!currentUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
+
+    if (!currentUser)
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+
     res.status(200).json({ success: true, user: currentUser });
   } catch (error) {
     console.error("getMe Error:", error);
