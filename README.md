@@ -3,7 +3,7 @@
 A comprehensive full-stack web application that connects sports enthusiasts with venue owners, providing a seamless booking experience for sports facilities. Built with modern technologies and designed for scalability.
 
 ## 🚀 Live Demo
-🔗 **Quick Court is live here:** [https://your-deployed-link.com](https://quick-court-mx6r.onrender.com/)
+🔗 **Quick Court is live here:** [try our application](https://quick-court-mx6r.onrender.com/)
 
 ## Table of Contents
 
